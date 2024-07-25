@@ -1,1 +1,30 @@
+Step 1: Gain access to hf llama models by visiting the following model cards and requesting access:
+  Meta-Llama-3-8B: https://huggingface.co/meta-llama/Meta-Llama-3-8B
+  Llama-2-7b-hf: https://huggingface.co/meta-llama/Llama-2-7b-hf
+  Llama-2-13b-hf: https://huggingface.co/meta-llama/Llama-2-13b-hf
+  Llama-2-70b-hf: https://huggingface.co/meta-llama/Llama-2-70b-hf
 
+Step 2: Create read access token on hugging face once approved
+
+Step 3: Install nightly build of pytorch & torchtune from respective links:
+  pytorch: https://pytorch.org/get-started/locally/#linux-installation
+  torchtune: https://pytorch.org/torchtune/stable/install.html#install-via-git-clone *Use pip install nightly build method
+
+Step 4: Ensure that torchtune is functioning properly by using:
+  tune --help
+
+Step 5: Download models using torch tune:
+  tune download <MODELNAME> \
+      --output-dir <checkpoint_dir> \
+      --hf-token <ACCESS TOKEN>
+
+Step 6: Fine tune the model using torchtune recipes:
+  tune run lora_finetune_single_device --config <MODELNAME>_lora_single_device \
+  checkpointer.checkpoint_dir=<checkpoint_dir> \
+  tokenizer.path=<checkpoint_dir>/tokenizer.model \
+  checkpointer.output_dir=<checkpoint_dir>
+  For llama3-8B it would be:
+    tune run lora_finetune_single_device --config llama3/8B_lora_single_device \
+    checkpointer.checkpoint_dir=<checkpoint_dir> \
+    tokenizer.path=<checkpoint_dir>/tokenizer.model \
+    checkpointer.output_dir=<checkpoint_dir>
