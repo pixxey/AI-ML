@@ -1,1 +1,7 @@
-
+Use llama.cpp to benchmark LLAMA3 models:
+1. git clone https://github.com/ggerganov/llama.cpp.git
+2. Navigate to directory and enter:
+            make clean && make LLAMA_HIPBLAS=1
+3. Download quanitzed GGUF model from links found in GGUFModels.txt and place them in the llama.cpp model folder
+4. Use llama bench to test inference speed of model:
+            ./llama-bench --model models/<your_GGUF_model>
