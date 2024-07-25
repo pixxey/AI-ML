@@ -8,7 +8,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Function to load the model using torch.hub
 def load_pretrained_model():
     model = torch.hub.load('pytorch/vision:v0.10.0', 'inception_v3', pretrained=True)
-    model = model.to(device)
+    model = model.to(device).half()
     model.eval()
     return model
 
