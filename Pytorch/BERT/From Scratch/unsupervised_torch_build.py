@@ -46,7 +46,7 @@ print("Model initialized and saved to bert_from_scratch.pth")
 
 # Step 2: Load and Preprocess Dataset for Pre-training
 # Using a small subset of Wikipedia for demonstration
-dataset = load_dataset('wikipedia', '20220301.en', split='train[:10000]')  # Load first 1000 examples
+dataset = load_dataset('wikipedia', '20220301.en', split='train[:10000]')  # Load first 10000 examples
 
 def mask_tokens(inputs, tokenizer, mlm_probability=0.15):
     """ Prepare masked tokens inputs/labels for masked language modeling. """
