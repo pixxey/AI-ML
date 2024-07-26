@@ -13,6 +13,7 @@ LOCALHOST_URL = "http://127.0.0.1:7860"
 API_URL = f"{LOCALHOST_URL}/sdapi/v1/txt2img"
 CHECK_INTERVAL = 5
 OUTPUT_BASE_DIR = "outputs"
+RETRY_LIMIT = 3  # Limit for retrying server launch
 
 # List of 20 random prompts
 PROMPTS = [
@@ -91,18 +92,31 @@ def wait_for_server():
         time.sleep(CHECK_INTERVAL)
     print("Server is ready.")
 
-def launch_automatic1111():
+def launch_automatic1111(retry_count=0):
+    if retry_count >= RETRY_LIMIT:
+        print("Reached maximum retry limit for launching the server.")
+        return False
+
     os.chdir('stable-diffusion-webui')
     print("Starting Automatic1111 server")
     subprocess.Popen(['python3', 'launch.py', '--no-half', '--api'])
-    wait_for_server()
-    os.chdir('..')
+
+    try:
+        wait_for_server()
+        os.chdir('..')
+        return True
+    except Exception as e:
+        print(f"Error launching server: {e}")
+        os.chdir('..')
+        time.sleep(5)  # Wait before retrying
+        return launch_automatic1111(retry_count + 1)
 
 def kill_server():
     print("Stopping the Automatic1111 server...")
     try:
         subprocess.run(['pkill', '-f', 'launch.py'], check=True)
         print("Server stopped.")
+        time.sleep(5)  # Wait before starting the server again to avoid race conditions
     except subprocess.CalledProcessError as e:
         print(f"Error stopping the server: {e}")
 
@@ -127,7 +141,7 @@ def save_image(image_data, output_dir, index):
         file.write(image_data)
     return image_filename
 
-def generate_images(prompt, num_images=1, steps=50, batch_number=1):
+def generate_images(prompt, num_images=1, steps=50, batch_number=1, seed=None):
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_dir = os.path.join(script_dir, OUTPUT_BASE_DIR, f"output_{current_time}_batch_{batch_number}")
@@ -140,6 +154,9 @@ def generate_images(prompt, num_images=1, steps=50, batch_number=1):
         "steps": steps,
         "batch_size": num_images
     }
+
+    if seed is not None:
+        payload["seed"] = seed
 
     try:
         start_time = time.time()
@@ -168,11 +185,11 @@ def save_metrics(output_dir, payload, inference_time, iterations_per_second, ima
     metrics_filename = os.path.join(output_dir, "metrics.csv")
     file_exists = os.path.isfile(metrics_filename)
     metrics_header = [
-        "Batch Number", "Prompt", "Steps", "Batch Size", "Inference Time (seconds)", 
+        "Batch Number", "Prompt", "Steps", "Batch Size", "Seed", "Inference Time (seconds)", 
         "Iterations per Second", "Generated Images"
     ]
     metrics_data = [
-        batch_number, payload['prompt'], payload['steps'], payload['batch_size'], 
+        batch_number, payload['prompt'], payload['steps'], payload['batch_size'], payload.get('seed', 'N/A'),
         f"{inference_time:.2f}", f"{iterations_per_second:.2f}", 
         ", ".join(image_filenames)
     ]
@@ -184,19 +201,23 @@ def save_metrics(output_dir, payload, inference_time, iterations_per_second, ima
         writer.writerow(metrics_data)
 
     # Print metrics to console
-    print(f"Metrics for batch {batch_number} saved to {metrics_filename}")
+    print(f"Metrics for batch {batch_number}:")
+    for header, data in zip(metrics_header, metrics_data):
+        print(f"{header}: {data}")
+    print()
 
-def run_in_loop(kill_flag):
+def run_in_loop(kill_flag, seed):
     while True:
         warm_up_server()  # Always run the warm-up batch
 
         # Generate images using different prompts in three batches
         used_prompts = set()
-        for batch_number in range(1, 4):
+        batch_sizes = [1, 5, 10]
+        for batch_number, num_images in enumerate(batch_sizes, 1):
             selected_prompt = random.choice([p for p in PROMPTS if p not in used_prompts])
             used_prompts.add(selected_prompt)
             print(f"Selected prompt for batch {batch_number}: {selected_prompt}")
-            generate_images(selected_prompt, num_images=batch_number, batch_number=batch_number)
+            generate_images(selected_prompt, num_images=num_images, batch_number=batch_number, seed=seed)
         
         if kill_flag:
             kill_server()
@@ -208,6 +229,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the script in a loop if the --loop flag is provided.")
     parser.add_argument('--loop', action='store_true', help="Run the script in a continuous loop.")
     parser.add_argument('--kill', action='store_true', help="Kill the server at the end of each run.")
+    parser.add_argument('--seed', type=int, help="Seed value for image generation.")
     args = parser.parse_args()
 
     if not check_installation():
@@ -217,20 +239,23 @@ if __name__ == "__main__":
 
     server_running = check_if_running()
     if not server_running:
-        launch_automatic1111()
+        if not launch_automatic1111():
+            print("Failed to launch the server.")
+            exit(1)
 
     if args.loop:
-        run_in_loop(args.kill)
+        run_in_loop(args.kill, args.seed)
     else:
         warm_up_server()  # Always run the warm-up batch
 
         # Generate images using different prompts in three batches
         used_prompts = set()
-        for batch_number in range(1, 4):
+        batch_sizes = [1, 5, 10]
+        for batch_number, num_images in enumerate(batch_sizes, 1):
             selected_prompt = random.choice([p for p in PROMPTS if p not in used_prompts])
             used_prompts.add(selected_prompt)
             print(f"Selected prompt for batch {batch_number}: {selected_prompt}")
-            generate_images(selected_prompt, num_images=batch_number, batch_number=batch_number)
+            generate_images(selected_prompt, num_images=num_images, batch_number=batch_number, seed=args.seed)
         
         if args.kill:
             kill_server()
