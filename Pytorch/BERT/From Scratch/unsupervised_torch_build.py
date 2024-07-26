@@ -4,9 +4,8 @@ from transformers import BertConfig, BertTokenizer, BertForMaskedLM
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from transformers import AdamW
-import random
 
-# Step 1: Define and Initialize the BERT Model from Scratch
+# Define and initialize the BERT model for masked language modeling
 class BertModelForPretraining(nn.Module):
     def __init__(self, config):
         super(BertModelForPretraining, self).__init__()
@@ -16,7 +15,7 @@ class BertModelForPretraining(nn.Module):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
         return outputs.loss, outputs.logits
 
-# Initialize BERT config from scratch
+# Load the configuration
 config = BertConfig(
     vocab_size=30522,
     hidden_size=768,
@@ -27,8 +26,10 @@ config = BertConfig(
     type_vocab_size=2
 )
 
-# Initialize tokenizer and model
+# Initialize the tokenizer
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+# Initialize the model
 model = BertModelForPretraining(config)
 
 # Initialize weights
@@ -41,10 +42,10 @@ def initialize_weights(module):
 model.apply(initialize_weights)
 
 # Save the initialized model
-torch.save(model.state_dict(), 'bert_from_scratch.pth')
-print("Model initialized and saved to bert_from_scratch.pth")
+torch.save(model.state_dict(), 'unsupervised_bert.pth')
+print("Model initialized and saved to unsupervised_bert.pth")
 
-# Step 2: Load and Preprocess Dataset for Pre-training
+# Step 2: Load and preprocess dataset for masked language modeling
 # Using a small subset of Wikipedia for demonstration
 dataset = load_dataset('wikipedia', '20220301.en', split='train[:10000]')  # Load first 10000 examples
 
@@ -89,7 +90,7 @@ def collate_fn(batch):
 
 train_loader = DataLoader(encoded_dataset, batch_size=8, shuffle=True, collate_fn=collate_fn)
 
-# Step 3: Train the Model from Scratch
+# Step 3: Train the model from scratch
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model.to(device)
 optimizer = AdamW(model.parameters(), lr=2e-5)
@@ -116,5 +117,5 @@ for epoch in range(num_epochs):
 print("Training completed!")
 
 # Save the trained model
-torch.save(model.state_dict(), 'bert_from_scratch_trained.pth')
-print("Model trained and saved to bert_from_scratch_trained.pth")
+torch.save(model.state_dict(), 'unsupervised_bert_trained.pth')
+print("Model trained and saved to unsupervised_bert_trained.pth")
