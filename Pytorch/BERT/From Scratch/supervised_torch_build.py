@@ -101,5 +101,5 @@ for epoch in range(num_epochs):
 print("Training completed!")
 
 # Save the trained model
-torch.save(model.state_dict(), 'bert_from_scratch_trained.pth')
-print("Model trained and saved to bert_from_scratch_trained.pth")
+torch.save(model.state_dict(), 'supervised_bert_trained.pth')
+print("Model trained and saved to supervised_bert_trained.pth")
