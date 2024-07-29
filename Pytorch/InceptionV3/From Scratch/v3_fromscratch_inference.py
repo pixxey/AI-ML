@@ -1,3 +1,4 @@
+import os
 import torch
 from torchvision import transforms
 from PIL import Image
@@ -37,10 +38,13 @@ def preprocess_image(image_path):
     image = preprocess(image).unsqueeze(0)  # Add batch dimension
     return image.to(device)
 
-# Function to load class names
-def load_class_names(filepath):
-    with open(filepath) as f:
-        class_names = [line.strip() for line in f.readlines()]
+# Function to load class names from the annotations
+def load_class_names(annotations_path):
+    class_names = []
+    for dir_name in sorted(os.listdir(annotations_path)):
+        class_path = os.path.join(annotations_path, dir_name)
+        if os.path.isdir(class_path):
+            class_names.append(dir_name)
     return class_names
 
 # Function to make predictions
@@ -59,8 +63,9 @@ if __name__ == "__main__":
     model_path = 'inceptionv3_scratch_stanford_dogs.pth'  # Path to the saved model
     model = load_built_from_scratch_model(model_path, num_classes)
     
-    # Load class names from a file
-    class_names = load_class_names('imagenet_classes.txt')  # Replace with the path to your class names file
+    # Load class names from annotations
+    annotations_path = 'data/stanford_dogs/Annotation'  # Path to the extracted annotations
+    class_names = load_class_names(annotations_path)
 
     # Path to the image you want to predict
     image_path = 'dog.jpg'  # Replace with the path to your image
